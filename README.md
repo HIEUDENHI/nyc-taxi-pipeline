@@ -16,7 +16,7 @@
 
 ## Problem Description
 
-We operate a **monthly** batch pipeline to ingest, transform, and analyze NYC taxi trip data, extracting key business metrics:
+I operate a **monthly** batch pipeline to ingest, transform, and analyze NYC taxi trip data, extracting key business metrics:
 
 - **Revenue trends** (total fare revenue per month).  
 - **Top 5 pickup zones** by trip count.  
@@ -63,7 +63,7 @@ Each month, raw Parquet files are uploaded into a structured GCS bucket, neatly 
 
 ### 2. Load into BigQuery
 
-An Airflow task, powered by `BigQueryInsertJobOperator`, triggers a load job to pull data from GCS into BigQuery’s partitioned tables. Using `WRITE_TRUNCATE`, we ensure idempotency by replacing prior month’s data, while partitioning by pickup date optimizes query performance and reduces costs.  
+An Airflow task, powered by `BigQueryInsertJobOperator`, triggers a load job to pull data from GCS into BigQuery’s partitioned tables. Using `WRITE_TRUNCATE`, I ensure idempotency by replacing prior month’s data, while partitioning by pickup date optimizes query performance and reduces costs.  
 
 
 ### 3. Transform with dbt
