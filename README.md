@@ -1,52 +1,87 @@
-<<<<<<< HEAD
-# nyc-taxi-pipeline
-=======
-Overview
-========
+# End-to-End NYC Taxi Trips Data Pipeline
 
-Welcome to Astronomer! This project was generated after you ran 'astro dev init' using the Astronomer CLI. This readme describes the contents of the project, as well as how to run Apache Airflow on your local machine.
+## Table of Contents
 
-Project Contents
-================
+- [Problem Description](#problem-description)
+- [Data Source](#data-source)
+- [Technologies](#technologies)
+- [Data Pipeline Architecture and Workflow](#data-pipeline-architecture-and-workflow)
+  - [1. Manual Upload & Partitioning in GCS](#1-manual-upload--partitioning-in-gcs)
+  - [2. Load into BigQuery](#2-load-into-bigquery)
+  - [3. Transform with dbt](#3-transform-with-dbt)
+  - [4. Visualization with Looker Studio](#4-visualization-with-looker-studio)
+- [Further Improvements](#further-improvements)
 
-Your Astro project contains the following files and folders:
+---
 
-- dags: This folder contains the Python files for your Airflow DAGs. By default, this directory includes one example DAG:
-    - `example_astronauts`: This DAG shows a simple ETL pipeline example that queries the list of astronauts currently in space from the Open Notify API and prints a statement for each astronaut. The DAG uses the TaskFlow API to define tasks in Python, and dynamic task mapping to dynamically print a statement for each astronaut. For more on how this DAG works, see our [Getting started tutorial](https://www.astronomer.io/docs/learn/get-started-with-airflow).
-- Dockerfile: This file contains a versioned Astro Runtime Docker image that provides a differentiated Airflow experience. If you want to execute other commands or overrides at runtime, specify them here.
-- include: This folder contains any additional files that you want to include as part of your project. It is empty by default.
-- packages.txt: Install OS-level packages needed for your project by adding them to this file. It is empty by default.
-- requirements.txt: Install Python packages needed for your project by adding them to this file. It is empty by default.
-- plugins: Add custom or community plugins for your project to this file. It is empty by default.
-- airflow_settings.yaml: Use this local-only file to specify Airflow Connections, Variables, and Pools instead of entering them in the Airflow UI as you develop DAGs in this project.
+## Problem Description
 
-Deploy Your Project Locally
-===========================
+We operate a **monthly** batch pipeline to ingest, transform, and analyze NYC taxi trip data, extracting key business metrics:
 
-1. Start Airflow on your local machine by running 'astro dev start'.
+- **Revenue trends** (total fare revenue per month).  
+- **Top 5 pickup zones** by trip count.  
+- **% usage by payment type** (cash vs. card) to measure the success of cash-incentive campaigns.  
+- **Passenger count trends** to recommend optimal vehicle sizing (e.g., promoting 2-seater cars to reduce costs).  
 
-This command will spin up 4 Docker containers on your machine, each for a different Airflow component:
+Each month’s raw data arrives as Parquet files (~1–2 GB), well-organized into `year=YYYY/month=MM/` folders in Google Cloud Storage (GCS).
 
-- Postgres: Airflow's Metadata Database
-- Webserver: The Airflow component responsible for rendering the Airflow UI
-- Scheduler: The Airflow component responsible for monitoring and triggering tasks
-- Triggerer: The Airflow component responsible for triggering deferred tasks
+---
 
-2. Verify that all 4 Docker containers were created by running 'docker ps'.
+## Data Source
 
-Note: Running 'astro dev start' will start your project with the Airflow Webserver exposed at port 8080 and Postgres exposed at port 5432. If you already have either of those ports allocated, you can either [stop your existing Docker containers or change the port](https://www.astronomer.io/docs/astro/cli/troubleshoot-locally#ports-are-not-available-for-my-local-airflow-webserver).
+- **Dataset**: NYC Taxi and Limousine Commission (TLC) Trip Record Data  
+  [https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page](https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page)  
+- **Data Dictionary**: Yellow Taxi Trip Records  
+  [https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf](https://www.nyc.gov/assets/tlc/downloads/pdf/data_dictionary_trip_records_yellow.pdf)  
 
-3. Access the Airflow UI for your local Airflow project. To do so, go to http://localhost:8080/ and log in with 'admin' for both your Username and Password.
 
-You should also be able to access your Postgres Database at 'localhost:5432/postgres'.
+---
 
-Deploy Your Project to Astronomer
-=================================
+## Technologies
 
-If you have an Astronomer account, pushing code to a Deployment on Astronomer is simple. For deploying instructions, refer to Astronomer documentation: https://www.astronomer.io/docs/astro/deploy-code/
+- **Google Cloud Storage** – Data lake for storing Parquet files, partitioned by month.  
+- **Google BigQuery** – Data warehouse with monthly-partitioned tables for efficient queries.  
+- **dbt Core** – Transformation and modeling to shape raw data into actionable insights.  
+- **Apache Airflow** – Orchestration for seamless monthly pipeline execution.  
+- **Terraform** – Infrastructure as code for GCS buckets and BigQuery datasets.  
+- **Looker Studio** – Interactive dashboards for visualizing key metrics.  
+- **Docker** – Reproducible local and development environments.
 
-Contact
-=======
+---
 
-The Astronomer CLI is maintained with love by the Astronomer team. To report a bug or suggest a change, reach out to our support.
->>>>>>> 0e6e2fb (upload source)
+## Data Pipeline Architecture and Workflow
+
+![GCS Partitioning](assets/data_pipeline.png)
+
+The workflow is as follows:
+
+### 1. Manual Upload & Partitioning in GCS
+
+Each month, raw Parquet files are uploaded into a structured GCS bucket, neatly organized by `year=YYYY/month=MM/`. This orderly structure ensures smooth data ingestion and scalability.  
+
+![GCS Partitioning](assets/gcs_partitioning.png)
+
+### 2. Load into BigQuery
+
+An Airflow task, powered by `BigQueryInsertJobOperator`, triggers a load job to pull data from GCS into BigQuery’s partitioned tables. Using `WRITE_TRUNCATE`, we ensure idempotency by replacing prior month’s data, while partitioning by pickup date optimizes query performance and reduces costs.  
+
+
+### 3. Transform with dbt
+
+dbt is the backbone of our transformation process, selected for its ability to streamline complex SQL transformations and ensure data consistency across models. It organizes raw green and yellow taxi data into a star schema, with `fact_trips` as the central fact table and dimensions like `dim_date`, enriched by static seed files such as `dim_locations`, `dim_payment_types`, `dim_vendors`, and `dim_ratecodes`. This structure delivers clean, deduplicated data with keys like `trip_id` and `pickup_date`, optimized for analysis. Incremental updates process only new monthly data, enhancing efficiency.  
+
+![Data Model](assets/data_model.png)
+
+### 4. Visualization with Looker Studio
+
+
+![Looker Studio Dashboard](assets/looker_dashboard.png)
+
+---
+
+## Further Improvements
+
+- **Host Airflow on GCE**: Enable high availability and autoscaling for robust orchestration.  
+- **CI/CD Pipeline**: Implement GitHub Actions for DAG linting, dbt testing, and automated deployments.  
+- **Data Quality Checks**: Integrate Great Expectations for advanced validation before and after transformations.
+
