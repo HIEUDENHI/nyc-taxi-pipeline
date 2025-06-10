@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: nyc_taxi_raw
+    database: nyc-taxi-pipeline-460408
+    schema: nyc_taxi_raw
+    tables:
+      - name: green_trips
+        description: "Table loaded from GCS green parquet files"
+      - name: yellow_trips
+        description: "Table loaded from GCS yellow parquet files"

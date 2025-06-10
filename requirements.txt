@@ -1,0 +1,5 @@
+# --- dbt ---
+dbt-bigquery==1.7.9
+google-auth>=2.25.0,<3.0.0         
+google-cloud-bigquery>=3.11.4,<3.20  
+protobuf<5                          

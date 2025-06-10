@@ -1,0 +1,28 @@
+version: 2
+
+seeds:
+
+  - name: dim_locations
+    description: "TLC taxi zone lookup 263 zones."
+    columns:
+      - name: location_id
+        description: "Zone identifier (int)"
+        tests: [not_null, unique]
+
+  - name: dim_payment_types
+    description: "Reference list of TLC payment type codes."
+    columns:
+      - name: payment_type_id
+        tests: [not_null, unique]
+
+  - name: dim_ratecodes
+    description: "Rate code definitions used by TLC meters."
+    columns:
+      - name: rate_code
+        tests: [not_null, unique]
+
+  - name: dim_vendors
+    description: "Vendors (TLC licensed bases / dispatchers)."
+    columns:
+      - name: vendor_id
+        tests: [not_null, unique]
