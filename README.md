@@ -39,7 +39,7 @@ Each month’s raw data arrives as Parquet files (~1–2 GB), well-organized int
 
 ## Technologies
 
-- **Google Cloud Storage** – Data lake for storing Parquet files, partitioned by month.  
+- **Google Cloud Storage** – Object Storage for storing Parquet files, partitioned by month.  
 - **Google BigQuery** – Data warehouse with monthly-partitioned tables for efficient queries.  
 - **dbt Core** – Transformation and modeling to shape raw data into actionable insights.  
 - **Apache Airflow** – Orchestration for seamless monthly pipeline execution.  
