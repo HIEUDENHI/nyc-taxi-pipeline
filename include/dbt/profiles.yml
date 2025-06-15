@@ -1,0 +1,23 @@
+taxi_pipeline:
+  outputs:
+    dev:
+      type: bigquery
+      dataset: dev_taxi_data
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+      method: service-account
+      keyfile: /usr/local/airflow/terraform/gcp/service-account.json
+      project: nyc-taxi-pipeline-460408
+      threads: 1
+      location: US
+    prod:
+      type: bigquery
+      dataset: prod_taxi_data
+      job_execution_timeout_seconds: 300
+      job_retries: 1
+      keyfile: /usr/local/airflow/terraform/gcp/service-account.json
+      method: service-account
+      project: nyc-taxi-pipeline-460408
+      threads: 1
+      location: US
+  target: dev

@@ -1,0 +1,209 @@
+version: 2
+
+###############################################################################
+#                               STAGING LAYER
+###############################################################################
+
+models:
+
+# ───────────────────────────────── stg_green_trips ────────────────────────── #
+- name: stg_green_trips
+  description: >
+    Green-cab trips đọc từ bảng external (file Parquet gốc TLC).
+  columns:
+    - name: service_type
+      description: "Constant 'green' dùng phân biệt với yellow."
+    - name: pickup_datetime
+      description: "Thời điểm tài xế nhận khách."
+      tests: [not_null]
+    - name: dropoff_datetime
+      description: "Thời điểm kết thúc chuyến."
+
+    - name: pickup_date
+      description: "Date(pickup_datetime) dùng partition pruning."
+
+   
+    - name: vendor_id
+      description: |
+        ID hãng/tổng đài:
+          1 Creative Mobile Technologies (CMT),
+          2 VeriFone (VTS).
+    - name: rate_code
+      description: >
+        Mã tính cước đồng hồ (1 = Standard, 2 = JFK, 5 = JFK-Nassau, …).
+    - name: pickup_location_id
+      description: "Mã vùng (Taxi Zone) lúc đón – FK dim_locations.location_id."
+    - name: dropoff_location_id
+      description: "Mã vùng (Taxi Zone) lúc trả khách."
+    - name: payment_type_id
+      description: |
+        1=Credit card, 2=Cash, 3=No charge, 4=Dispute,
+        5=Unknown, 6=Voided trip.
+
+    - name: passenger_count
+      description: "Số hành khách ghi nhận bởi lái xe / thiết bị (0–8)."
+    - name: trip_distance
+      description: "Quãng đường mile do đồng hồ tính."
+    - name: fare_amount
+      description: "Tiền cước cơ bản."
+    - name: extra
+      description: "Phụ phí (đêm, giờ cao điểm)."
+    - name: mta_tax
+      description: "Thuế MTA $0.50 / chuyến."
+    - name: tip_amount
+      description: "Tiền boa (thẻ)."
+    - name: tolls_amount
+      description: "Cầu đường."
+    - name: improvement_surcharge
+      description: "Phụ phí $0.30 đổi mới xe."
+    - name: congestion_surcharge
+      description: "Phụ phí ùn tắc $2.50 / $2.75."
+    - name: airport_fee
+      description: "Phụ phí sân bay $1.25 (EWR, LGA, JFK)."
+    - name: total_amount
+      description: "Tổng phải trả (đã gồm thuế, phụ phí, tip)."
+
+# ───────────────────────────────── stg_yellow_trips ───────────────────────── #
+- name: stg_yellow_trips
+  description: >
+    Canonicalised Yellow-cab trips từ **bronze.yellow_trips**.
+  columns:
+    - name: service_type
+      description: "Constant 'yellow' dùng phân biệt với green."
+    - name: pickup_datetime
+      description: "Thời điểm tài xế nhận khách."
+      tests: [not_null]
+    - name: dropoff_datetime
+      description: "Thời điểm kết thúc chuyến."
+
+    - name: pickup_date
+      description: "Date(pickup_datetime) dùng partition pruning."
+
+    - name: vendor_id
+      description: |
+        ID hãng/tổng đài:
+          1 Creative Mobile Technologies (CMT),
+          2 VeriFone (VTS).
+    - name: rate_code
+      description: >
+        Mã tính cước đồng hồ (1 = Standard, 2 = JFK, 5 = JFK-Nassau, …).
+    - name: pickup_location_id
+      description: "Mã vùng (Taxi Zone) lúc đón – FK dim_locations.location_id."
+    - name: dropoff_location_id
+      description: "Mã vùng (Taxi Zone) lúc trả khách."
+    - name: payment_type_id
+      description: |
+        1=Credit card, 2=Cash, 3=No charge, 4=Dispute,
+        5=Unknown, 6=Voided trip.
+
+    - name: passenger_count
+      description: "Số hành khách ghi nhận bởi lái xe / thiết bị (0–8)."
+    - name: trip_distance
+      description: "Quãng đường mile do đồng hồ tính."
+    - name: fare_amount
+      description: "Tiền cước cơ bản."
+    - name: extra
+      description: "Phụ phí (đêm, giờ cao điểm)."
+    - name: mta_tax
+      description: "Thuế MTA $0.50 / chuyến."
+    - name: tip_amount
+      description: "Tiền boa (thẻ)."
+    - name: tolls_amount
+      description: "Cầu đường."
+    - name: improvement_surcharge
+      description: "Phụ phí $0.30 đổi mới xe."
+    - name: congestion_surcharge
+      description: "Phụ phí ùn tắc $2.50 / $2.75."
+    - name: airport_fee
+      description: "Phụ phí sân bay $1.25 (EWR, LGA, JFK)."
+    - name: total_amount
+      description: "Tổng phải trả (đã gồm thuế, phụ phí, tip)."
+# ───────────────────────────────── stg_trips (UNION) ─────────────────────── #
+- name: stg_trips
+  description: >
+    UNION ALL hai staging trên;
+  columns:
+    - name: service_type
+      description: "'green' | 'yellow'."
+    - name: all_other_columns
+      description: "Giữ nguyên cột đã khai ở hai staging views."
+
+###############################################################################
+#                               MARTS / CORE
+###############################################################################
+
+# ───────────────────────────────── dim_date ───────────────────────────────── #
+- name: dim_date
+  description: >
+    Calendar dimension sinh tự động: một hàng / ngày hiện diện trong nguồn.
+  columns:
+    - name: date_id
+      description: "Khóa chính; kiểu DATE."
+      tests: 
+        - not_null
+    - name: year
+      description: "Năm (INT64)."
+    - name: month
+      description: "Tháng (1-12)."
+    - name: day
+      description: "Ngày trong tháng (1-31)."
+    - name: day_of_week
+      description: "Chủ nhật = 1 … Thứ bảy = 7."
+    - name: quarter
+      description: "Quý (1-4)."
+    - name: hour
+
+# ───────────────────────────────── fact_trips ────────────────────────────── #
+- name: fact_trips
+  description: |
+    Fact. Chứa:
+      • Khoá chính `trip_id` (md5 hash),
+      • Khoá ngoại (vendor_id, ratecode_id, …),
+      • Tất cả measure tiền & quãng đường, passenger_count,
+      • Trường phân tích thời gian (pickup_datetime, trip_month…).
+  columns:
+    - name: trip_id
+      description: "MD5(service_type || pickup_datetime …); PK bất biến."
+      tests: [not_null, unique]
+
+    # --- FOREIGN KEYS ---
+    - name: vendor_id
+      description: "FK → dim_vendors.vendor_id"
+    - name: rate_code
+      description: "FK → dim_ratecodes.ratecode_id"
+    - name: payment_type_id
+      description: "FK → dim_payment_types.payment_type_id"
+    - name: pickup_location_id
+      description: "FK → dim_locations.location_id"
+    - name: dropoff_location_id
+      description: "FK → dim_locations.location_id"
+
+    # --- DATETIME & PARTITION ---
+    - name: pickup_datetime
+      description: "Thời gian đón khách."
+    - name: dropoff_datetime
+      description: "Thời gian trả khách."
+    
+    # --- MEASURES ---
+    - name: passenger_count
+      description: "Số hành khách (0-8)."
+    - name: trip_distance
+      description: "Mile."
+    - name: fare_amount
+      description: "Giá cước cơ bản."
+    - name: extra
+      description: "Phụ phí đêm/giờ cao điểm."
+    - name: mta_tax
+      description: "Thuế MTA."
+    - name: tip_amount
+      description: "Tip."
+    - name: tolls_amount
+      description: "Cầu đường."
+    - name: improvement_surcharge
+      description: "Phụ phí $0.30."
+    - name: congestion_surcharge
+      description: "Phụ phí ùn tắc."
+    - name: airport_fee
+      description: "Phụ phí sân bay."
+    - name: total_amount
+      description: "Tổng tiền (sum các khoản trên)."

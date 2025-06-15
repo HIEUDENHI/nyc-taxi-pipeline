@@ -1,0 +1,62 @@
+name: taxi_pipeline
+version: "1.0.0"
+config-version: 2
+
+profile: 'taxi_pipeline'
+vars: {}
+model-paths:  ["models"]
+seed-paths:   ["seeds"]
+macro-paths: ["macros"]
+models:
+  taxi_pipeline:
+
+    # ---------- STAGING ----------
+    staging:
+      +schema: staging
+      +materialized: view
+      +tags: ['staging']
+
+    # ---------- MARTS / CORE ----------
+    core:
+      +schema: core
+      +materialized: incremental
+      +incremental_strategy: merge
+      +tags: ['core']
+      dim_date:
+        +partition_by:
+            field: date_id
+            data_type: date
+            granularity: month
+
+      fact_trips:
+        +unique_key: trip_id
+        +partition_by:
+          field: pickup_date
+          data_type: date
+          granularity: month
+
+seeds:
+  taxi_pipeline:
+    +schema: seed
+
+    dim_locations:
+      +column_types:
+        location_id: int64
+        borough: string
+        zone: string
+        service_zone: string
+
+    dim_payment_types:
+      +column_types:
+        payment_type_id: int64
+        payment_type_name: string
+
+    dim_ratecodes:
+      +column_types:
+        rate_code: int64
+        ratecode_description: string
+
+    dim_vendors:
+      +column_types:
+        vendor_id: int64
+        vendor_name: string
